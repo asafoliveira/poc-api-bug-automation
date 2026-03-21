@@ -1,115 +1,118 @@
-# PoC de criação automática de bugs
+# Automated API Defect Reporter (PoC)
 
-Quando um teste de API falha, esta PoC:
+*Study project / proof of concept.* This repo is a small learning exercise: wire Playwright API tests to Jira so failed runs can open or update issues automatically. It is not production-hardened; it exists to experiment with reporting, deduplication, and CI.
 
-1. **Captura** dados estruturados da falha (endpoint, método, status, corpo da requisição/resposta, mensagem de erro) em arquivos JSON em `artifacts/`.
-2. **Gera um fingerprint** para deduplicação: `hash(método + endpoint + status + mensagemDeErro)`.
-3. **Consulta o Jira** com JQL: `project = QA AND labels = "<fingerprint>" AND status != Done`.
-4. **Se já existir um issue correspondente** → adiciona um comentário com o horário da nova ocorrência e o corpo da resposta.
-5. **Se não** → preenche o template `templates/bug-api.md` com os dados da falha, cria um novo bug no Jira com o fingerprint como label e anexa o JSON de requisição/resposta.
+When an API test fails, this PoC:
 
-Tudo isso pode rodar automaticamente no GitHub Actions após a etapa de testes.
+1. *Captures* structured failure data (endpoint, method, status, request/response body, error message) as JSON under artifacts/.
+2. *Builds a fingerprint* for deduplication: hash(method + endpoint + status + errorMessage).
+3. *Queries Jira* with JQL: project = <KEY> AND labels = "<fingerprint>" AND status != Done.
+4. *If a matching issue exists* → adds a comment with the new occurrence timestamp and response body.
+5. *If not* → fills templates/bug-api.md, creates a Jira bug with the fingerprint as a label, and attaches request/response JSON.
 
-## Pré-requisitos
+The same flow can run in *GitHub Actions* after the test step.
+
+## Prerequisites
 
 - Node.js 20+
-- Variáveis de ambiente (veja abaixo)
+- Environment variables (see below)
+- A Jira Cloud site and API token (for local runs and/or Actions)
 
-## Variáveis de ambiente
+## Environment variables
 
-Copie `.env.example` para `.env` e configure:
+Copy .env.example to .env and set:
 
-| Variável | Descrição |
-|----------|-----------|
-| `JIRA_EMAIL` | E-mail da conta Jira |
-| `JIRA_API_TOKEN` | Token de API do Jira (Atlassian) |
-| `JIRA_BASE_URL` | URL base do Jira (ex.: `https://seu-dominio.atlassian.net`) |
-| `JIRA_PROJECT` | Chave do projeto (ex.: `QA`). **Obrigatório** para criar no projeto certo (local e Actions). |
-| `JIRA_ISSUE_TYPE` | Opcional (padrão `Bug`). |
+| Variable | Description |
+|----------|-------------|
+| JIRA_EMAIL | Jira account email |
+| JIRA_API_TOKEN | Jira API token (Atlassian) |
+| JIRA_BASE_URL | Jira base URL (e.g. https://your-domain.atlassian.net) |
+| JIRA_PROJECT | Project *key* (e.g. QA). Required to create issues in the right project (local + Actions). |
+| JIRA_ISSUE_TYPE | Optional (defaults to Bug). |
 
-## Execução local
+## Running locally
 
-### 1. Instalar e rodar os testes
+### 1. Install and run tests
 
-```bash
-cd bug-automation-poc
+bash
+cd automated-api-defect-reporter
 npm install
 npx playwright test
-```
 
-Dois testes falham de propósito (asserções incorretas em GET /posts e GET /posts/1). Após a execução, `artifacts/` terá um arquivo JSON por falha.
 
-### 2. Processar falhas (Jira)
+Two tests *fail on purpose* (wrong assertions on GET /posts and GET /posts/1). After the run, artifacts/ contains one JSON file per failure.
 
-```bash
+### 2. Process failures (Jira)
+
+bash
 npx tsx scripts/processFailures.ts
-```
 
-Lê todos os `artifacts/*.json`, gera um fingerprint para cada um, busca no Jira e então comenta em um issue existente ou cria um novo (conteúdo a partir de `templates/bug-api.md` e um anexo).
+
+Reads all artifacts/*.json, fingerprints each, searches Jira, then either comments on an existing issue or creates a new one (from templates/bug-api.md plus an attachment).
 
 ## GitHub Actions
 
-Arquivo do workflow: `.github/workflows/api-tests.yml` (neste repositório).
+Workflow: .github/workflows/api-tests.yml.
 
-- **Gatilhos:** `push` e `pull_request` em `main`/`master`.
-- **Etapas:** Checkout → Configurar Node → Instalar dependências (em `bug-automation-poc`) → Instalar Playwright → Rodar testes (`continue-on-error: true`) → Executar `processFailures.ts`.
+- *Triggers:* push and pull_request to main / master.
+- *Steps:* checkout → Node → npm install → Playwright install → playwright test (continue-on-error: true) → processFailures.ts.
 
-**Secrets** no repositório (Settings → Secrets and variables → Actions):
+*Repository secrets* (Settings → Secrets and variables → Actions):
 
-- `JIRA_EMAIL`
-- `JIRA_API_TOKEN`
-- `JIRA_BASE_URL`
-- `JIRA_PROJECT` — mesma chave do `.env` (ex.: `QA`)
-- `JIRA_ISSUE_TYPE` — opcional; se omitir, o script usa `Bug`
+- JIRA_EMAIL
+- JIRA_API_TOKEN
+- JIRA_BASE_URL
+- JIRA_PROJECT — same key as in .env (e.g. QA)
+- JIRA_ISSUE_TYPE — optional; if omitted, the script defaults to Bug
 
-**Erro 410 na busca Jira (“API removida… migre para `/rest/api/3/search/jql`”):** o código deste repositório já usa esse endpoint. Faça **pull/push** da versão atual de `src/jira/client.ts` no remoto — pipelines com código antigo ainda chamavam `/rest/api/3/search`, que a Atlassian desligou.
+*410 on Jira search* (“API removed… migrate to /rest/api/3/search/jql”): this repo’s src/jira/client.ts uses the new search endpoint. If you still see 410, your remote branch may be outdated—pull/push the latest client. Older code called /rest/api/3/search, which Atlassian removed.
 
-## Formato do JSON em artifacts/
+## Artifact JSON shape
 
-Cada arquivo de falha em `artifacts/` tem a forma:
+Each failure file under artifacts/ looks like:
 
-```json
+json
 {
   "endpoint": "/posts",
   "method": "GET",
   "status": 200,
-  "responseBody": { ... },
+  "responseBody": { },
   "requestBody": null,
   "errorMessage": "Expected status 500, got 200",
   "timestamp": "2025-03-09T12:00:00.000Z"
 }
-```
+
 
 ## Fingerprint
 
-A deduplicação usa um hash determinístico:
+Deduplication uses a deterministic hash:
 
-`fingerprint = sha256(método + "|" + endpoint + "|" + status + "|" + mensagemDeErro)`
+fingerprint = sha256(method + "|" + endpoint + "|" + status + "|" + errorMessage)
 
-O mesmo fingerprint é armazenado como label no Jira nos issues criados, para que execuções futuras possam buscar por label com deduplicação mais forte.
+That value is stored as a Jira *label* on new issues so later runs can find duplicates by label.
 
-## Estrutura do projeto
+## Project layout
 
-```
-bug-automation-poc/
+
+automated-api-defect-reporter/
   src/
-    tests/          # Testes de API Playwright (JSONPlaceholder)
-    jira/           # Cliente REST Jira (busca, criar, comentar, anexar)
+    tests/          # Playwright API tests (JSONPlaceholder)
+    jira/           # Jira REST helper (search, create, comment, attach)
     utils/          # fingerprint, failurePayload, bugTemplate
-    reporter/       # Reporter customizado que grava JSON de falha em artifacts/
+    reporter/       # Custom reporter → writes failure JSON to artifacts/
   scripts/
     processFailures.ts
   templates/
-    bug-api.md      # Template da descrição do bug (placeholders: method, endpoint, status, etc.)
-  artifacts/        # Arquivos JSON de falha (gitignored, exceto .gitkeep)
+    bug-api.md      # Bug body template (placeholders: method, endpoint, status, …)
+  artifacts/        # Failure JSON (gitignored)
   playwright.config.ts
   package.json
   tsconfig.json
-```
 
-## APIs sob teste
 
-URL base: `https://jsonplaceholder.typicode.com`
+## APIs under test
+
+Base URL: https://jsonplaceholder.typicode.com
 
 - GET /posts
 - GET /posts/{id}

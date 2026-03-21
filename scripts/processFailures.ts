@@ -20,9 +20,9 @@ const JIRA_ISSUE_TYPE = process.env.JIRA_ISSUE_TYPE?.trim() || 'Bug';
 
 async function main(): Promise<void> {
   if (!process.env.JIRA_PROJECT?.trim()) {
-    console.warn('JIRA_PROJECT não definido no .env; usando "QA".');
+    console.warn('JIRA_PROJECT not defined in .env; using "QA".');
   }
-  console.log('Projeto Jira:', JIRA_PROJECT);
+  console.log('Jira Project:', JIRA_PROJECT);
 
   if (!fs.existsSync(ARTIFACTS_DIR)) return;
 
@@ -54,21 +54,21 @@ async function main(): Promise<void> {
     try {
       existing = await jira.searchIssues(jql);
     } catch (e) {
-      console.error(`Busca no Jira falhou para ${file}:`, (e as Error).message);
+      console.error(`Jira search failed for ${file}:`, (e as Error).message);
       continue;
     }
 
     if (existing.length > 0) {
       const issueKey = existing[0].key;
       if (!issueKey) {
-        console.warn(`Issue sem key para ${file}; criando novo.`);
+        console.warn(`Issue without key for ${file}; creating new.`);
       } else {
-        const comment = `Nova ocorrência: ${data.timestamp}\n\nCorpo da resposta:\n\`\`\`json\n${JSON.stringify(data.responseBody, null, 2)}\n\`\`\``;
+        const comment = `New occurrence: ${data.timestamp}\n\nResponse body:\n\`\`\`json\n${JSON.stringify(data.responseBody, null, 2)}\n\`\`\``;
         try {
           await jira.addComment(issueKey, comment);
-          console.log(`Comentário adicionado no issue ${issueKey} (${file})`);
+          console.log(`Comment added to issue ${issueKey} (${file})`);
         } catch (e) {
-          console.error(`Não foi possível adicionar comentário no issue ${issueKey}:`, (e as Error).message);
+          console.error(`Could not add comment to issue ${issueKey}:`, (e as Error).message);
         }
       }
       continue;
@@ -89,12 +89,12 @@ async function main(): Promise<void> {
       const attachmentPayload = { requestBody: data.requestBody, responseBody: data.responseBody };
       const attachmentBuffer = Buffer.from(JSON.stringify(attachmentPayload, null, 2), 'utf8');
       await jira.addAttachment(key, 'request-response.json', attachmentBuffer, 'application/json');
-      console.log(`Issue ${key} criado (${file})`);
+      console.log(`Issue ${key} created (${file})`);
     } catch (e) {
       const errMsg = (e as Error).message;
-      console.error(`Erro ao criar issue para ${file}:`, errMsg);
+      console.error(`Error creating issue for ${file}:`, errMsg);
       if (errMsg.includes('valid project is required')) {
-        console.error(`Dica: defina JIRA_PROJECT no .env. Valor atual: "${JIRA_PROJECT}"`);
+        console.error(`Tip: define JIRA_PROJECT in .env. Current value: "${JIRA_PROJECT}"`);
       }
     }
   }

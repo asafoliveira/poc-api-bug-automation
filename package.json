@@ -1,5 +1,5 @@
 {
-  "name": "bug-automation-poc",
+  "name": "automated-api-defect-reporter",
   "version": "1.0.0",
   "description": "PoC: criação automática de bugs a partir de falhas em testes de API (Playwright + Jira + template)",
   "type": "module",

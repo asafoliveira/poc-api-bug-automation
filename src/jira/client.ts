@@ -49,7 +49,7 @@ export async function searchIssues(jql: string): Promise<Array<{ key: string }>>
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Busca no Jira falhou: ${res.status} ${text}`);
+    throw new Error(`Jira search failed: ${res.status} ${text}`);
   }
   const data = (await res.json()) as JiraSearchResult;
   return (data.issues ?? []).map((i) => ({ key: i.key ?? (i as { key?: string }).key ?? String((i as { id?: string }).id ?? '') })).filter((x) => x.key);
@@ -132,7 +132,7 @@ export async function addComment(issueKey: string, body: string): Promise<void> 
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`addComment no Jira falhou: ${res.status} ${text}`);
+    throw new Error(`addComment in Jira failed: ${res.status} ${text}`);
   }
 }
 
@@ -154,7 +154,7 @@ export async function createIssue(payload: JiraCreateIssuePayload): Promise<{ ke
   const res = await fetchJira('/rest/api/3/issue', { method: 'POST', body });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`createIssue no Jira falhou: ${res.status} ${text}`);
+    throw new Error(`createIssue in Jira failed: ${res.status} ${text}`);
   }
   const data = (await res.json()) as JiraCreateIssueResponse;
   return { key: data.key };
@@ -184,6 +184,6 @@ export async function addAttachment(
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`addAttachment no Jira falhou: ${res.status} ${text}`);
+    throw new Error(`addAttachment in Jira failed: ${res.status} ${text}`);
   }
 }

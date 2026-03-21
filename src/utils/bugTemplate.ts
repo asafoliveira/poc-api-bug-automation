@@ -15,7 +15,7 @@ export interface BugContent {
 const SUMMARY_MAX_LENGTH = 120;
 const TEMPLATE_PATH = path.join(process.cwd(), 'templates', 'bug-api.md');
 
-/** Remove códigos ANSI da mensagem de erro. */
+/** Remove ANSI codes from the error message. */
 export function stripAnsi(s: string): string {
   return s.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, '').trim();
 }
@@ -30,24 +30,24 @@ function truncate(s: string, max: number): string {
 }
 
 function severityFromStatus(status: number): string {
-  if (status >= 500) return 'Alto';
-  if (status >= 400) return 'Médio';
-  return 'Médio';
+  if (status >= 500) return 'High';
+  if (status >= 400) return 'Medium';
+  return 'Medium';
 }
 
-function summaryInPortuguese(method: string, endpoint: string, status: number, cleanMessage: string): string {
+function summaryInEnglish(method: string, endpoint: string, status: number, cleanMessage: string): string {
   const expectedReceived = /Expected:\s*(\S+)\s+Received:\s*(\S+)/i.exec(cleanMessage);
   const shortDesc = expectedReceived
-    ? `esperado ${expectedReceived[1]}, recebido ${expectedReceived[2]}`
-    : `status ${status} — resposta não conforme`;
-  return truncate(`Falha de API: ${method} ${endpoint} — ${shortDesc}`, SUMMARY_MAX_LENGTH);
+    ? `expected ${expectedReceived[1]}, received ${expectedReceived[2]}`
+    : `status ${status} — response not as expected`;
+  return truncate(`API Failure: ${method} ${endpoint} — ${shortDesc}`, SUMMARY_MAX_LENGTH);
 }
 
 export function buildBugContentFromFailure(payload: FailurePayload): BugContent {
   const { endpoint, method, status, errorMessage } = payload;
   const cleanMessage = stripAnsi(errorMessage).replace(/\s+/g, ' ').trim();
   const severity = severityFromStatus(status);
-  const summary = summaryInPortuguese(method, endpoint, status, cleanMessage);
+  const summary = summaryInEnglish(method, endpoint, status, cleanMessage);
 
   let fullDescription: string;
   if (fs.existsSync(TEMPLATE_PATH)) {
@@ -60,15 +60,15 @@ export function buildBugContentFromFailure(payload: FailurePayload): BugContent 
       .replace(/\{\{severity\}\}/g, severity);
   } else {
     fullDescription = [
-      `Requisição ${method} ${endpoint} retornou status ${status}. ${cleanMessage}`,
+      `Request ${method} ${endpoint} returned status ${status}. ${cleanMessage}`,
       '',
-      '**Passos para reproduzir:**',
-      `1. Enviar requisição ${method} para ${endpoint}.`,
-      '2. Ver anexo request-response.json.',
+      '**Steps to reproduce:**',
+      `1. Send ${method} request to ${endpoint}.`,
+      '2. See attachment request-response.json.',
       '',
-      '**Esperado:** Status e resposta conforme contrato do teste.',
-      `**Atual:** ${cleanMessage} Status HTTP: ${status}.`,
-      `**Severidade:** ${severity}`,
+      '**Expected:** Status and response as per test contract.',
+      `**Actual:** ${cleanMessage} HTTP Status: ${status}.`,
+      `**Severity:** ${severity}`,
     ].join('\n');
   }
 

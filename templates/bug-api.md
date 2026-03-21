@@ -1,22 +1,22 @@
-## Descrição
+## Description
 
-A requisição **{{method}}** para `{{endpoint}}` retornou status **{{status}}**.
+The **{{method}}** request to `{{endpoint}}` returned status **{{status}}**.
 
 {{errorMessage}}
 
-## Passos para reproduzir
+## Steps to reproduce
 
-1. Enviar requisição **{{method}}** para `{{endpoint}}`.
-2. Ver anexo `request-response.json` para corpo da requisição e resposta.
+1. Send **{{method}}** request to `{{endpoint}}`.
+2. See attachment `request-response.json` for request body and response.
 
-## Esperado
+## Expected
 
-Status e resposta conforme contrato/esperado do teste.
+Status and response as per test contract/expected.
 
-## Atual
+## Actual
 
-{{errorMessage}} Status HTTP: {{status}}.
+{{errorMessage}} HTTP Status: {{status}}.
 
-## Severidade
+## Severity
 
 {{severity}}
